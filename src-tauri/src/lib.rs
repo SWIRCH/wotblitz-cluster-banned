@@ -51,7 +51,8 @@ fn check_hosts_consistency(selections: serde_json::Value) -> Result<serde_json::
         Ok(t) => t,
         Err(_) => return Ok(json!({ "available": false, "mismatch": false, "blocked": [] })),
     };
-    let hosts_set: std::collections::BTreeSet<String> = parse_blocked_domains_from_text(&text).into_iter().collect();
+    let hosts_set: std::collections::BTreeSet<String> =
+        parse_blocked_domains_from_text(&text).into_iter().collect();
 
     // selections is expected to be a map of region -> { domain: bool }
     let mut mismatch = false;
@@ -60,7 +61,10 @@ fn check_hosts_consistency(selections: serde_json::Value) -> Result<serde_json::
         for (_region, val) in map {
             if let serde_json::Value::Object(domain_map) = val {
                 for (domain, enabled_val) in domain_map {
-                    let enabled = match enabled_val { serde_json::Value::Bool(b) => b, _ => true };
+                    let enabled = match enabled_val {
+                        serde_json::Value::Bool(b) => b,
+                        _ => true,
+                    };
                     let hosts_blocked = hosts_set.contains(&domain.to_lowercase());
                     if hosts_blocked != !enabled {
                         mismatch = true;
@@ -68,7 +72,9 @@ fn check_hosts_consistency(selections: serde_json::Value) -> Result<serde_json::
                     }
                 }
             }
-            if mismatch { break; }
+            if mismatch {
+                break;
+            }
         }
     }
 
@@ -83,7 +89,12 @@ fn update_hosts_block(blocked_domains: Vec<String>) -> Result<(), String> {
     for p in paths {
         if let Ok(mut content) = std::fs::read_to_string(p) {
             // remove existing block
-            let re = regex::Regex::new(&format!("{}[\\s\\S]*?{}", regex::escape(START_MARKER), regex::escape(END_MARKER))).map_err(|e| e.to_string())?;
+            let re = regex::Regex::new(&format!(
+                "{}[\\s\\S]*?{}",
+                regex::escape(START_MARKER),
+                regex::escape(END_MARKER)
+            ))
+            .map_err(|e| e.to_string())?;
             content = re.replace_all(&content, "").to_string();
 
             // append new block
@@ -110,7 +121,12 @@ fn update_hosts_block(blocked_domains: Vec<String>) -> Result<(), String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![greet, read_blocked_domains, check_hosts_consistency, update_hosts_block])
+        .invoke_handler(tauri::generate_handler![
+            greet,
+            read_blocked_domains,
+            check_hosts_consistency,
+            update_hosts_block
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

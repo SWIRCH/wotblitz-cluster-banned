@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import clustersData from "../data/servers.json";
 import ClusterMenu from "./components/ClusterMenu";
 import ClusterList from "./components/ClusterList";
+import { config } from "../utils/config";
 import {
   loadSelections,
   saveSelections,
@@ -16,8 +17,37 @@ import {
   isProcessRunning,
   killProcess,
 } from "../utils/tauriInvoke";
+import {
+  loadSettings,
+  saveSingleSetting,
+  type AppSettings,
+} from "../utils/settingsStorage";
+import { openAuthorLink } from "../utils/opener";
 
 export default function App() {
+  const [settings, setSettings] = useState<AppSettings>(() => {
+    return loadSettings();
+  });
+
+  const updateSetting = <K extends keyof AppSettings>(
+    key: K,
+    value: AppSettings[K]
+  ) => {
+    setSettings((prev) => {
+      const updated = { ...prev, [key]: value };
+      saveSingleSetting(key, value);
+      return updated;
+    });
+  };
+
+  // const updateSettings = (newSettings: Partial<AppSettings>) => {
+  //   setSettings((prev) => {
+  //     const updated = { ...prev, ...newSettings };
+  //     saveSettings(updated);
+  //     return updated;
+  //   });
+  // };
+
   const game = clustersData as any; // JSON contains top-level game info
 
   // default to EU if present, else first region
@@ -36,6 +66,9 @@ export default function App() {
   >({});
   const [hostsMismatch, setHostsMismatch] = useState(false);
 
+  // const [useFirewall, setUseFirewall] = useState(true);
+  // const [useBackup, setUseBackup] = useState(false);
+
   // Confirmation modal state
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmDomains, setConfirmDomains] = useState<string[]>([]);
@@ -53,12 +86,19 @@ export default function App() {
   const [infoMessage, setInfoMessage] = useState("");
   const [infoIsError, setInfoIsError] = useState(false);
 
+  const [LoadingConfirmButton_ls, setLoadingConfirmButton_ls] = useState(false);
+
   // Debugging / status
   const [tauriAvailable, setTauriAvailable] = useState<boolean | null>(null); // null = unknown
   const [mismatchDomains, setMismatchDomains] = useState<string[]>([]);
   const [lastTauriError, setLastTauriError] = useState<string | null>(null);
 
   // const [networkDebug, setNetworkDebug] = useState<any>(null);
+
+  const [diagnosticInfo, setDiagnosticInfo] = useState<any>(null);
+
+  // Modals
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
 
   // Admin/elevation modal
   const [adminModalOpen, setAdminModalOpen] = useState(false);
@@ -353,24 +393,77 @@ export default function App() {
     }
 
     try {
-      const updateRes: any = isRemoval
+      let updateRes: any;
+      let firewallRes: any = null;
+
+      // Обновляем hosts файл
+      updateRes = isRemoval
         ? await safeInvoke("update_hosts_block", {
             blocked_domains: domains,
             remove: true,
             region: selectedRegionId,
+            backupSaved: settings.useBackup,
           })
         : await safeInvoke("update_hosts_block", {
             blocked_domains: domains,
             region: selectedRegionId,
+            backupSaved: settings.useBackup,
           });
 
-      setInfoTitle("Hosts обновлены");
-      setInfoMessage(String(updateRes));
+      // Если включен брандмауэр, обновляем и правила брандмауэра
+      if (settings.useFirewall) {
+        console.log({
+          selectedRegionId,
+          domains,
+        });
+        try {
+          // Нужно импортировать функцию updateFirewallRules
+          const { updateFirewallRules } = await import("../utils/tauriInvoke");
+          firewallRes = await updateFirewallRules(
+            selectedRegionId,
+            domains,
+            !isRemoval // enable = true если блокируем, false если разблокируем
+          );
+        } catch (firewallError) {
+          console.error("Firewall update failed:", firewallError);
+          // Не прерываем выполнение, просто показываем предупреждение
+          firewallRes = `Предупреждение: не удалось обновить брандмауэр: ${firewallError}`;
+        }
+      }
+
+      // Формируем сообщение об успехе
+      let successMessage = "";
+      if (settings.useFirewall && firewallRes) {
+        successMessage = `
+✅ Hosts файл обновлен:
+${updateRes}
+        
+✅ Правила брандмауэра ${isRemoval ? "удалены" : "добавлены"}:
+${firewallRes}
+        
+Изменения применены на уровне сети (блокировка по IP).
+      `;
+      } else {
+        successMessage = `
+✅ Hosts файл обновлен:
+${updateRes}
+        
+ℹ️ Брандмауэр не использовался.
+${
+  settings.useFirewall
+    ? "(не удалось применить правила брандмауэра)"
+    : "(отключен в настройках)"
+}
+      `;
+      }
+
+      setInfoTitle(isRemoval ? "Разблокировано" : "Заблокировано");
+      setInfoMessage(successMessage.trim());
       setInfoIsError(false);
       setInfoOpen(true);
       setConfirmOpen(false);
 
-      // re-check only for the current region
+      // Перепроверяем статус hosts
       const rmap =
         selections[selectedRegionId] ??
         Object.fromEntries(clusters.map((c: any) => [c.domain, true]));
@@ -380,8 +473,23 @@ export default function App() {
       });
       setHostsMismatch(res?.mismatch ?? false);
     } catch (e) {
-      setInfoTitle("Ошибка обновления hosts");
-      setInfoMessage(String(e));
+      let errorMessage = String(e);
+      let errorTitle = "Ошибка обновления";
+
+      if (settings.useFirewall) {
+        errorTitle = "Ошибка обновления правил";
+        errorMessage = `
+        ❌ Не удалось применить изменения:
+        
+        ${errorMessage}
+        
+        Возможно, требуются права администратора для изменения правил брандмауэра.
+        Попробуйте запустить приложение от имени администратора.
+      `;
+      }
+
+      setInfoTitle(errorTitle);
+      setInfoMessage(errorMessage.trim());
       setInfoIsError(true);
       setInfoOpen(true);
       setConfirmOpen(false);
@@ -390,12 +498,33 @@ export default function App() {
 
   const clearCluster = async () => {
     try {
-      const res: any = await safeInvoke("clear_cluster_blocks");
-      setInfoTitle("Hosts очищены");
-      setInfoMessage(String(res));
+      let messages = [];
+
+      setLoadingConfirmButton_ls(true);
+
+      // Очищаем hosts
+      const hostsRes: any = await safeInvoke("clear_cluster_blocks", {
+        backupSaved: settings.useBackup,
+      });
+      messages.push(hostsRes);
+
+      // Очищаем брандмауэр если он использовался
+      if (settings.useFirewall) {
+        try {
+          const { clearFirewallRules } = await import("../utils/tauriInvoke");
+          const fwRes = await clearFirewallRules();
+          messages.push(`Брандмауэр: ${fwRes}`);
+        } catch (fwError) {
+          messages.push(`Ошибка очистки брандмауэра: ${fwError}`);
+        }
+      }
+
+      setInfoTitle("Всё очищено");
+      setInfoMessage(messages.join("\n\n"));
       setInfoIsError(false);
       setInfoOpen(true);
       setClearConfirmOpen(false);
+
       // Clear saved selections so UI resets to defaults
       await clearSelections();
       // reload defaults into state
@@ -405,16 +534,19 @@ export default function App() {
           (region.clusters ?? []).map((c: any) => [c.domain, true])
         );
       }
+      setLoadingConfirmButton_ls(false);
       setSelections(defaults);
       await saveSelections(defaults);
 
-      // Clear ping results too
-      setPings({});
-
       // Update UI status
       checkHostsNow();
+
+      // Clear ping results too
+      setPings({});
+      await pingClusters(selectedRegionId);
+      await checkGameRunning();
     } catch (e) {
-      setInfoTitle("Ошибка очистки hosts");
+      setInfoTitle("Ошибка очистки");
       setInfoMessage(String(e));
       setInfoIsError(true);
       setInfoOpen(true);
@@ -615,7 +747,7 @@ export default function App() {
                     height={22}
                     src={selectedRegion?.icon ?? game.icon}
                   />
-                  <h3>{selectedRegion?.alias_name ?? selectedRegion?.name}</h3>
+                  <h3>{selectedRegion?.alias_name ?? selectedRegion?.name} </h3>
                   <ChevronDown
                     size={20}
                     strokeWidth={1.5}
@@ -653,7 +785,15 @@ export default function App() {
           </div>
         </div>
         <div>
-          <small>v0.001b</small>
+          {/* <div className="text-xs text-gray-400">
+            Firewall enabled: {settings.useFirewall ? "Yes" : "No"}
+            {settings.useFirewall ? " (Available)" : " (Not available)"}
+          </div> */}
+          <small>
+            <span className="cursor-pointer" onClick={() => openAuthorLink()}>
+              {config.AUTHOR}@{config.BREACH} {config.VERSION}
+            </span>
+          </small>
         </div>
       </div>
       <div className="inGameContainer">
@@ -691,7 +831,7 @@ export default function App() {
                       className="text-red-400 text-xs"
                       onClick={() => setClearConfirmOpen(true)}
                     >
-                      Очистить Hosts
+                      Очистить блокировки
                     </button>
                   </div>
                 </div>
@@ -699,7 +839,7 @@ export default function App() {
             </div>
             <div className="gameButtons rounded-xl bg-white/5 backdrop-blur-2xl p-4 sm:p-4 relative w-full">
               <AnimatePresence mode="wait">
-                <div className="relative w-full h-12 flex items-center mt-1">
+                <div className="relative w-full h-12 flex items-center mt-1 gap-2">
                   {hostsMismatch ? (
                     <motion.button
                       key="update-btn"
@@ -724,7 +864,7 @@ export default function App() {
                         selectedRegion?.alias_name ?? selectedRegion?.name
                       }`}
                     >
-                      {`Обновить hosts (${
+                      {`Обновить блок (${
                         selectedRegion?.alias_name ?? selectedRegion?.name
                       })`}
                     </motion.button>
@@ -793,6 +933,17 @@ export default function App() {
                       {gameRunning ? "Закрыть" : "Играть"}
                     </motion.button>
                   )}
+
+                  {/* <motion.button
+                    key="option-btn"
+                    className={`steam-btn option-btn btnposition absolute left-0 right-0 top-1/2 -translate-y-1/2`}
+                    initial={{ opacity: 0, y: 8, scale: 0.995 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 8, scale: 0.995 }}
+                    transition={{ duration: 0.18 }}
+                  >
+                    <Settings2 />
+                  </motion.button> */}
                 </div>
               </AnimatePresence>
 
@@ -807,6 +958,7 @@ export default function App() {
                       Tauri недоступен — запустите desktop-приложение
                     </span>
                   )}
+
                   {/* {tauriAvailable === true && hostsMismatch === false && (
                   <span className="text-green-400">Hosts в порядке</span>
                 )} */}
@@ -831,27 +983,14 @@ export default function App() {
                       className="text-xs underline"
                       onClick={() => checkHostsNow()}
                     >
-                      Проверить hosts
+                      Проверить статус
                     </button>
+
                     <button
                       className="text-xs underline"
-                      onClick={async () => {
-                        try {
-                          const d: any = await import("../utils/tauriInvoke");
-                          const res = await d.diagnoseTauri();
-                          console.debug("diagnoseTauri -> result", res);
-                          setLastTauriError(JSON.stringify(res, null, 2));
-                          setTauriAvailable(
-                            res.invokeExists || res.windowTAURI
-                          );
-                        } catch (err) {
-                          console.debug("diagnoseTauri failed", err);
-                          setLastTauriError(String(err));
-                          setTauriAvailable(false);
-                        }
-                      }}
+                      onClick={() => setSettingsModalOpen(true)}
                     >
-                      Диагностика
+                      Настройки
                     </button>
 
                     <button
@@ -1076,12 +1215,15 @@ export default function App() {
                     transition={{ duration: 0.18 }}
                   >
                     <h3 className="text-lg font-semibold mb-2">
-                      Очистить Hosts
+                      Очистить Hosts{" "}
+                      {settings.useFirewall ? "& Firewall" : undefined}
                     </h3>
                     <p className="text-sm text-white/60 mb-4">
-                      Это удалит все секции, добавленные приложением в файл
-                      hosts. Резервная копия будет создана автоматически. Вы
-                      уверены?
+                      Это удалит все секции и правила, добавленные приложением в
+                      файл hosts и в брандмауэр.{" "}
+                      {!!settings.useBackup &&
+                        "Резервная копия будет создана автоматически."}{" "}
+                      Вы уверены?
                     </p>
                     <div className="flex justify-end gap-2">
                       <button
@@ -1091,10 +1233,13 @@ export default function App() {
                         Отмена
                       </button>
                       <button
-                        className="steam-btn bg-red-600 text-white px-4 py-2 rounded"
+                        className="steam-btn bg-red-600 text-white px-4 py-2 rounded flex items-center w-full"
                         onClick={clearCluster}
+                        disabled={LoadingConfirmButton_ls}
                       >
-                        Подтвердить
+                        {LoadingConfirmButton_ls
+                          ? "Обновление данных..."
+                          : "Подтвердить"}
                       </button>
                     </div>
                   </motion.div>
@@ -1139,6 +1284,233 @@ export default function App() {
                         onClick={() => setInfoOpen(false)}
                       >
                         ОК
+                      </button>
+                    </div>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Admin/Elevation modal (non-closable; requires retry or elevation) */}
+            <AnimatePresence>
+              {settingsModalOpen && (
+                <motion.div
+                  key="settings-modal"
+                  className="fixed inset-0 z-1000 flex items-center justify-center"
+                >
+                  <motion.div
+                    className="absolute inset-0 bg-black/60"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 0.6 }}
+                    exit={{ opacity: 0 }}
+                  />
+
+                  <motion.div
+                    className="backdrop-blur-2xl rounded-xl bg-white/5 p-6 sm:p-4 relative w-[min(640px,90%)] "
+                    initial={{ opacity: 0, y: 8, scale: 0.995 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 8, scale: 0.995 }}
+                    transition={{ duration: 0.18 }}
+                  >
+                    <h3 className="text-lg font-semibold mb-2">
+                      Настройки приложения
+                    </h3>
+
+                    <p className="text-sm text-white/60 mb-4">
+                      Здесь вы можете настроить параметры приложения.
+                    </p>
+
+                    <div className="mt-3 p-3 rounded bg-white/5">
+                      <div className="text-sm font-medium mb-2">
+                        Методы блокировки:
+                      </div>
+
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={settings.useFirewall}
+                          onChange={(e) =>
+                            updateSetting("useFirewall", e.target.checked)
+                          }
+                          className="rounded"
+                        />
+                        <span>Использовать брандмауэр Windows</span>
+                        <span className="text-green-400 text-xs">
+                          (рекомендуется)
+                        </span>
+                      </label>
+
+                      <div className="text-xs text-white/60 mt-1 pl-6">
+                        Блокирует подключения на уровне сети. Работает даже если
+                        игра использует IP напрямую. Требует прав
+                        администратора.
+                      </div>
+                    </div>
+
+                    <div className="mt-3 p-3 rounded bg-white/5">
+                      <div className="text-sm font-medium mb-2">
+                        Бекапы (резеврные копии)
+                      </div>
+
+                      <div className="">
+                        <label className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={settings.useBackup}
+                            onChange={(e) =>
+                              updateSetting("useBackup", e.target.checked)
+                            }
+                            className="rounded"
+                          />
+                          <span>Создавать бекапы hosts</span>
+                          <span className="text-green-400 text-xs">
+                            (рекомендуется)
+                          </span>
+                        </label>
+
+                        <div className="text-xs text-white/60 mt-1 pl-6">
+                          После очистки создаёт файл .bak в папке с hosts.
+                        </div>
+                      </div>
+
+                      <div className="">
+                        {/* <label className="flex items-center gap-2 text-sm">
+                          <input
+                            type="number"
+                            defaultValue={settings.backupCount}
+                            onChange={(e) =>
+                              updateSetting(
+                                "backupCount",
+                                Number(e.target.value)
+                              )
+                            }
+                            className="rounded"
+                          />
+                          <span>Создавать бекапы hosts</span>
+                          <span className="text-green-400 text-xs">
+                            (рекомендуется)
+                          </span>
+                        </label> */}
+
+                        <div className="relative flex flex-col mt-2">
+                          <div className="text-sm mb-1.5">
+                            <span>Максимальное колличество бекапов</span>
+                          </div>
+                          <div className="relative flex items-center">
+                            <button
+                              type="button"
+                              id="decrement-button"
+                              data-input-counter-decrement="counter-input"
+                              className="flex items-center justify-center text-body bg-neutral-secondary-medium box-border border border-default-medium hover:bg-neutral-tertiary-medium hover:text-heading focus:ring-4 focus:ring-neutral-tertiary rounded-full text-sm focus:outline-none h-6 w-6"
+                              onClick={() =>
+                                updateSetting(
+                                  "backupCount",
+                                  Math.max(1, settings.backupCount) - 1
+                                )
+                              }
+                            >
+                              <svg
+                                className="w-3 h-3 text-heading"
+                                aria-hidden="true"
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="24"
+                                height="24"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  stroke="currentColor"
+                                  stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  stroke-width="2"
+                                  d="M5 12h14"
+                                />
+                              </svg>
+                            </button>
+                            <input
+                              type="text"
+                              id="counter-input"
+                              data-input-counter
+                              className="shrink-0 text-heading border-0 bg-transparent text-sm font-normal focus:outline-none focus:ring-0 max-w-[2.5rem] text-center"
+                              placeholder=""
+                              value={settings.backupCount}
+                              required
+                            />
+                            <button
+                              type="button"
+                              id="increment-button"
+                              data-input-counter-increment="counter-input"
+                              className="flex items-center justify-center text-body bg-neutral-secondary-medium box-border border border-default-medium hover:bg-neutral-tertiary-medium hover:text-heading focus:ring-4 focus:ring-neutral-tertiary rounded-full text-sm focus:outline-none h-6 w-6"
+                              onClick={() =>
+                                updateSetting(
+                                  "backupCount",
+                                  Math.min(29, settings.backupCount) + 1
+                                )
+                              }
+                            >
+                              <svg
+                                className="w-3 h-3 text-heading"
+                                aria-hidden="true"
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="24"
+                                height="24"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  stroke="currentColor"
+                                  stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  stroke-width="2"
+                                  d="M5 12h14m-7 7V5"
+                                />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 p-3 rounded bg-white/5">
+                      <div className="text-sm font-medium mb-2">
+                        Отладка и диагностика:
+                      </div>
+
+                      <button
+                        className="text-xs"
+                        onClick={async () => {
+                          try {
+                            const d: any = await import("../utils/tauriInvoke");
+                            const res = await d.diagnoseTauri();
+                            console.debug("diagnoseTauri -> result", res);
+                            setDiagnosticInfo(JSON.stringify(res, null, 2));
+                            setTauriAvailable(
+                              res.invokeExists || res.windowTAURI
+                            );
+                          } catch (err) {
+                            console.debug("diagnoseTauri failed", err);
+                            setLastTauriError(String(err));
+                            setTauriAvailable(false);
+                          }
+                        }}
+                      >
+                        Диагностика
+                      </button>
+
+                      <div className="text-xs text-white/60 mt-1 pl-6">
+                        {diagnosticInfo ?? "Нет данных."}
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end gap-2 mt-2">
+                      <button
+                        className="option-btn bg-yellow-400 text-black px-4 py-2 rounded"
+                        onClick={() => {
+                          // Close the admin modal then open the help/info modal
+                          setSettingsModalOpen(false);
+                        }}
+                      >
+                        Сохранить и закрыть
                       </button>
                     </div>
                   </motion.div>
@@ -1294,7 +1666,7 @@ export default function App() {
                 </div>
               )}
             </div>
-            <div className="content !p-0 relative">
+            <div className="content p-0 relative">
               <div className="ban-clusters-2 mt-1 scrollbarYAuto">
                 <ClusterList
                   clusters={clusters}

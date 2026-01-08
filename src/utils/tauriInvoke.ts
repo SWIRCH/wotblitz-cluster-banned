@@ -57,6 +57,17 @@ export async function safeInvoke<T = any>(
   }
 }
 
+export async function directInvoke<T = any>(
+  cmd: string,
+  args?: Record<string, any>
+): Promise<T> {
+  const core = await import("@tauri-apps/api/core");
+  const { invoke } = core as any;
+
+  console.debug(`[DIRECT INVOKE] ${cmd}`, args);
+  return await invoke(cmd, args);
+}
+
 // Упрощенная диагностика
 export async function diagnoseTauri() {
   const result: any = {
@@ -96,4 +107,58 @@ export async function isProcessRunning(name: string) {
 
 export async function killProcess(name: string) {
   return safeInvoke("kill_process", { name });
+}
+
+export async function updateFirewallRules(
+  regionId: string,
+  blockedDomains: string[],
+  enable: boolean
+) {
+  console.log("[updateFirewallRules] Function called with:", {
+    regionId,
+    blockedDomains,
+    enable,
+  });
+
+  try {
+    const core = await import("@tauri-apps/api/core");
+    const { invoke } = core as any;
+    console.log("[updateFirewallRules] Core imported, calling invoke...");
+
+    const result = await invoke("update_firewall_rules", {
+      regionId: regionId,
+      blockedDomains: blockedDomains,
+      enable: enable,
+    });
+
+    console.log("[updateFirewallRules] Invoke successful:", result);
+    return result;
+  } catch (error) {
+    console.error("[updateFirewallRules] Invoke failed:", error);
+    throw error;
+  }
+}
+
+export async function updateClusterRules(
+  regionId: string,
+  blockedDomains: string[],
+  enable: boolean,
+  useHosts: boolean,
+  useFirewall: boolean
+) {
+  return await directInvoke("update_cluster_rules", {
+    region_id: regionId,
+    blocked_domains: blockedDomains,
+    enable: enable,
+    use_hosts: useHosts,
+    use_firewall: useFirewall,
+  });
+}
+
+export async function getFirewallRules() {
+  return await directInvoke("get_firewall_rules");
+}
+
+export async function clearFirewallRules() {
+  return await directInvoke("clear_firewall_rules");
 }

@@ -327,3 +327,41 @@ hr.vertical {
   transition: background-position 300ms ease-in;
   cursor: pointer;
 }
+
+.steam-btn:disabled {
+  background: linear-gradient(to right, #06c1ff7a 50%, #2b75ff6b 100%);
+}
+
+.option-btn {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-transform: uppercase;
+  width: 100%;
+  padding: 15px;
+  border-radius: 5px;
+  filter: drop-shadow(0px 3px 6px rgba(0, 0, 0, 0.16));
+  font-size: 14px;
+  letter-spacing: 0.03em;
+  text-align: center;
+  color: #fff;
+  position: relative;
+  font-family: "Motiva Sans", Sans-serif;
+  background: linear-gradient(to right, #06bfff 50%, #2b74ff 100%);
+  background-size: 200%;
+  background-position: right 0;
+  transition: background-position 300ms ease-in;
+}
+
+.option-btn:hover {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-transform: uppercase;
+  position: relative;
+  background: linear-gradient(to right, #06bfff 50%, #2b74ff 100%);
+  background-size: 200%;
+  background-position: 0 0;
+  transition: background-position 300ms ease-in;
+  cursor: pointer;
+}

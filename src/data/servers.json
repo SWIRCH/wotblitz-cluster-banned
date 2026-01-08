@@ -19,32 +19,38 @@
         {
           "id": "C0",
           "domain": "login0.tanksblitz.ru",
-          "location": "Мосрентген (Москва)"
+          "location": "Мосрентген (Москва)",
+          "ips": [""]
         },
         {
           "id": "C1",
           "domain": "login1.tanksblitz.ru",
-          "location": "Долгопрудный (Москва)"
+          "location": "Долгопрудный (Москва)",
+          "ips": [""]
         },
         {
           "id": "C2",
           "domain": "login2.tanksblitz.ru",
-          "location": "Красноярск"
+          "location": "Красноярск",
+          "ips": [""]
         },
         {
           "id": "C3",
           "domain": "login3.tanksblitz.ru",
-          "location": "Екатеринбург"
+          "location": "Екатеринбург",
+          "ips": [""]
         },
         {
           "id": "C4",
           "domain": "login4.tanksblitz.ru",
-          "location": "Мосрентген (Москва)"
+          "location": "Мосрентген (Москва)",
+          "ips": [""]
         },
         {
           "id": "C5",
           "domain": "login5.tanksblitz.ru",
-          "location": "Москва"
+          "location": "Москва",
+          "ips": [""]
         }
       ]
     },
@@ -57,27 +63,49 @@
         {
           "id": "C0",
           "domain": "login0.wotblitz.eu",
-          "location": "Амстердам (Нидерланды)"
+          "location": "Амстердам (Нидерланды)",
+          "ips": [
+            "92.223.31.132",
+            "92.223.31.130",
+            "92.223.31.131",
+            "92.223.31.133",
+            "92.223.31.134",
+            "92.223.31.136"
+          ]
         },
         {
           "id": "C1",
           "domain": "login1.wotblitz.eu",
-          "location": "Амстердам (Нидерланды)"
+          "location": "Амстердам (Нидерланды)",
+          "ips": [
+            "18.153.122.187",
+            "63.179.84.77",
+            "35.157.169.188",
+            "52.29.25.170"
+          ]
         },
         {
           "id": "C2",
           "domain": "login2.wotblitz.eu",
-          "location": "Франкфурт-на-Майне (Германия)"
+          "location": "Франкфурт-на-Майне (Германия)",
+          "ips": [""]
         },
         {
           "id": "C3",
           "domain": "login3.wotblitz.eu",
-          "location": "Варшава (Польша)"
+          "location": "Варшава (Польша)",
+          "ips": [
+            "94.156.45.25",
+            "94.156.45.237",
+            "94.156.45.138",
+            "94.156.45.176"
+          ]
         },
         {
           "id": "C4",
           "domain": "login4.wotblitz.eu",
-          "location": "Алматы (Казахстан)"
+          "location": "Алматы (Казахстан)",
+          "ips": ["83.229.15.235", "83.229.15.195"]
         }
       ]
     },
@@ -90,17 +118,20 @@
         {
           "id": "C0",
           "domain": "login0.wotblitz.asia",
-          "location": "Сингапур"
+          "location": "Сингапур",
+          "ips": [""]
         },
         {
           "id": "C1",
           "domain": "login1.wotblitz.asia",
-          "location": "Сингапур"
+          "location": "Сингапур",
+          "ips": [""]
         },
         {
           "id": "C2",
           "domain": "login2.wotblitz.asia",
-          "location": "Токио (Япония)"
+          "location": "Токио (Япония)",
+          "ips": [""]
         }
       ]
     },
@@ -113,17 +144,20 @@
         {
           "id": "C0",
           "domain": "login0.wotblitz.com",
-          "location": "Чикаго, Иллинойс (США)"
+          "location": "Чикаго, Иллинойс (США)",
+          "ips": [""]
         },
         {
           "id": "C1",
           "domain": "login1.wotblitz.com",
-          "location": "Манассас, Вирджиния (США)"
+          "location": "Манассас, Вирджиния (США)",
+          "ips": [""]
         },
         {
           "id": "C2",
           "domain": "login2.wotblitz.com",
-          "location": "Санта Клара, Калифорния (США)"
+          "location": "Санта Клара, Калифорния (США)",
+          "ips": [""]
         }
       ]
     }
