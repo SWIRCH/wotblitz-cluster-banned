@@ -1,4 +1,4 @@
-const SETTINGS_KEY = "clusterbanned_settings";
+import { safeInvoke } from "./tauriInvoke";
 
 export interface AppSettings {
   useFirewall: boolean;
@@ -12,38 +12,34 @@ const defaultSettings: AppSettings = {
   backupCount: 5,
 };
 
-export function loadSettings(): AppSettings {
+export async function loadSettings(): Promise<AppSettings> {
   try {
-    const saved = localStorage.getItem(SETTINGS_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-
-      // Слияние с дефолтными значениями (на случай если добавятся новые поля)
-      return {
-        ...defaultSettings,
-        ...parsed,
-      };
-    }
+    const settings = await safeInvoke<AppSettings>("get_settings");
+    // Слияние с дефолтными значениями (на случай если добавятся новые поля)
+    return {
+      ...defaultSettings,
+      ...settings,
+    };
   } catch (error) {
     console.error("Failed to load settings:", error);
+    return defaultSettings;
   }
-
-  return defaultSettings;
 }
 
-export function saveSettings(settings: AppSettings): void {
+export async function saveSettings(settings: AppSettings): Promise<void> {
   try {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    await safeInvoke("save_settings", { settings });
   } catch (error) {
     console.error("Failed to save settings:", error);
+    throw error;
   }
 }
 
-export function saveSingleSetting<K extends keyof AppSettings>(
+export async function saveSingleSetting<K extends keyof AppSettings>(
   key: K,
   value: AppSettings[K]
-): void {
-  const current = loadSettings();
+): Promise<void> {
+  const current = await loadSettings();
   const updated = { ...current, [key]: value };
-  saveSettings(updated);
+  await saveSettings(updated);
 }

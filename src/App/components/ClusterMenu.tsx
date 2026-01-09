@@ -1,13 +1,8 @@
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
 import { ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-
-type Cluster = {
-  id: string;
-  domain: string;
-  location?: string;
-  latency?: string;
-};
+import type { Cluster } from "../../types/cluster";
+import type { PingMap } from "../../types/ping";
 
 export default function ClusterMenu({
   clusters,
@@ -18,26 +13,18 @@ export default function ClusterMenu({
   clusters: Cluster[];
   selectedDomain?: string;
   onSelect?: (domain: string) => void;
-  pings?: Record<
-    string,
-    {
-      last: number | null;
-      avg: number | null;
-      attempts: number;
-      successes: number;
-      lossPercent: number;
-      status: string;
-    }
-  >;
+  pings?: PingMap;
 }) {
   const selected =
     clusters.find((c) => c.domain === selectedDomain) ?? clusters[0];
+
+  console.log(selectedDomain);
 
   return (
     <Menu>
       <MenuButton className="dropdownButton flex items-center gap-2">
         <div className="server-select flex items-center gap-2">
-          <img width={25} height={25} src="Games/444200/mini.png" />
+          <img width={25} height={25} src={`Games/444200/mini.png`} />
           <div className="flex items-center">
             <h3>{selected ? `${selected.id} - ${selected.domain}` : "—"}</h3>
             <span className="mx-1">—</span>

@@ -24,6 +24,8 @@ fn main() {
             update_hosts_block,
             update_firewall_rules,
             update_cluster_rules,
+            get_settings,
+            save_settings,
         ])
         // Запускаем приложение
         .run(tauri::generate_context!())
@@ -156,9 +158,12 @@ async fn debug_network(hostname: String) -> Result<serde_json::Value, String> {
     // Тест 3: Системная команда (если DNS не работает)
     #[cfg(windows)]
     {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
         let cmd_start = Instant::now();
         let output = std::process::Command::new("cmd")
             .args(&["/C", "ping", "-n", "1", &hostname])
+            .creation_flags(CREATE_NO_WINDOW)
             .output();
 
         match output {
@@ -236,15 +241,20 @@ async fn ping_server(
     let timeout_sec = (timeout_ms.unwrap_or(600) as f64 / 1000.0).ceil() as u64;
 
     #[cfg(windows)]
-    let output = Command::new("ping")
-        .args(&[
-            "-n",
-            "1",
-            "-w",
-            &(timeout_sec * 1000).to_string(),
-            &hostname,
-        ])
-        .output();
+    let output = {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        Command::new("ping")
+            .args(&[
+                "-n",
+                "1",
+                "-w",
+                &(timeout_sec * 1000).to_string(),
+                &hostname,
+            ])
+            .creation_flags(CREATE_NO_WINDOW)
+            .output()
+    };
 
     #[cfg(not(windows))]
     let output = Command::new("ping")
@@ -409,11 +419,14 @@ fn update_hosts_block(
     remove: Option<bool>,
     region: Option<String>,
     args: Option<serde_json::Value>,
-    backup_saved: Option<bool>,
 ) -> Result<String, String> {
     // Prefer directly provided named params (matches Tauri's expected mapping)
     let mut blocked: Option<Vec<String>> = blocked_domains.or(blockedDomains);
-    let backup_saved = backup_saved.unwrap_or(false);
+    // Читаем настройки из файла, если не переданы явно
+    let backup_saved = {
+        let (_use_firewall, use_backup, _backup_count) = read_settings_from_file();
+        use_backup
+    };
 
     // If not provided, try to extract from the optional `args` wrapper
     if blocked.is_none() {
@@ -591,7 +604,7 @@ fn update_hosts_block(
             content = content.replace("\n\n\n", "\n\n");
         }
         
-        if(backup_saved){
+        if backup_saved {
             // Backup original
             let ts = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -653,7 +666,7 @@ fn update_hosts_block(
         content.push_str(&block);
         content.push('\n'); // ensure file ends with a single newline
 
-        if(backup_saved){
+        if backup_saved {
             // Backup original
             let ts = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -680,7 +693,7 @@ fn update_hosts_block(
     } else if had_block {
         // We removed the existing block; this means we've unblocked everything for clusterbanned (for this region)
         
-        if(backup_saved){
+        if backup_saved {
             // Backup original
             let ts = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -849,7 +862,6 @@ async fn update_cluster_rules(
                 Some(false),
                 Some(region_id.clone()),
                 None,
-                None,
             )
         } else {
             update_hosts_block(
@@ -857,7 +869,6 @@ async fn update_cluster_rules(
                 None,
                 Some(true),
                 Some(region_id.clone()),
-                None,
                 None,
             )
         } {
@@ -889,8 +900,13 @@ async fn update_cluster_rules(
 
 // Команда 4.1: Очистить все блоки, созданные clusterbanned (не трогая остальное)
 #[tauri::command]
-fn clear_cluster_blocks(backup_saved: bool) -> Result<String, String> {
+fn clear_cluster_blocks() -> Result<String, String> {
     println!("[TAURI] clear_cluster_blocks called");
+    // Читаем настройки из файла, если не переданы явно
+    let backup_saved = {
+        let (_use_firewall, use_backup, _backup_count) = read_settings_from_file();
+        use_backup
+    };
 
     let mut messages = Vec::new();
 
@@ -1051,9 +1067,12 @@ fn launch_game(appid: String) -> Result<String, String> {
     // Platform-specific open
     #[cfg(target_os = "windows")]
     {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
         // Use cmd start to honor URL schemes
         let res = std::process::Command::new("cmd")
             .args(&["/C", "start", "", &uri])
+            .creation_flags(CREATE_NO_WINDOW)
             .spawn();
         match res {
             Ok(_child) => Ok(uri),
@@ -1120,8 +1139,11 @@ fn kill_process(name: String) -> Result<String, String> {
             let pid_u = pid.as_u32();
             #[cfg(target_os = "windows")]
             {
+                use std::os::windows::process::CommandExt;
+                const CREATE_NO_WINDOW: u32 = 0x08000000;
                 if let Ok(st) = std::process::Command::new("taskkill")
                     .args(&["/PID", &pid_u.to_string(), "/F"])
+                    .creation_flags(CREATE_NO_WINDOW)
                     .status()
                 {
                     if st.success() {
@@ -1157,6 +1179,9 @@ fn block_with_firewall(domain: String, ips: Vec<String>, enable: bool) -> Result
         let mut results = Vec::new();
         let rule_name = format!("WoT_Blitz_Block_{}", domain.replace(".", "_"));
 
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        
         if enable {
             // Сначала удаляем существующее правило, если есть
             let _ = Command::new("netsh")
@@ -1167,6 +1192,7 @@ fn block_with_firewall(domain: String, ips: Vec<String>, enable: bool) -> Result
                     "rule",
                     &format!("name={}", rule_name),
                 ])
+                .creation_flags(CREATE_NO_WINDOW)
                 .output();
 
             // Блокируем каждый IP отдельно или все вместе
@@ -1186,6 +1212,7 @@ fn block_with_firewall(domain: String, ips: Vec<String>, enable: bool) -> Result
                     "enable=yes",
                     "profile=any",
                 ])
+                .creation_flags(CREATE_NO_WINDOW)
                 .output()
                 .map_err(|e| format!("Failed to create firewall rule: {}", e))?;
 
@@ -1215,6 +1242,7 @@ fn block_with_firewall(domain: String, ips: Vec<String>, enable: bool) -> Result
                                 "enable=yes",
                                 "profile=any",
                             ])
+                            .creation_flags(CREATE_NO_WINDOW)
                             .output();
 
                         if let Ok(out) = output {
@@ -1237,6 +1265,7 @@ fn block_with_firewall(domain: String, ips: Vec<String>, enable: bool) -> Result
                     "rule",
                     &format!("name={}", rule_name),
                 ])
+                .creation_flags(CREATE_NO_WINDOW)
                 .output();
 
             // Также удаляем отдельные правила IP
@@ -1250,6 +1279,7 @@ fn block_with_firewall(domain: String, ips: Vec<String>, enable: bool) -> Result
                         "rule",
                         &format!("name={}", ip_rule_name),
                     ])
+                    .creation_flags(CREATE_NO_WINDOW)
                     .output();
             }
 
@@ -1283,37 +1313,139 @@ fn clear_firewall_rules() -> Result<String, String> {
     #[cfg(windows)]
     {
         use std::process::Command;
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
 
         let mut results = Vec::new();
+        let mut deleted_rules = std::collections::HashSet::new();
 
         // Удаляем все правила, созданные нашим приложением
         let prefixes = ["WoT_Blitz_Block_", "WoT_Block_", "ClusterBanned_"];
 
-        for prefix in prefixes {
-            // Получаем список правил
-            let output = Command::new("netsh")
-                .args(&["advfirewall", "firewall", "show", "rule", "name=all"])
-                .output();
+        // Получаем список всех правил
+        let output = Command::new("netsh")
+            .args(&["advfirewall", "firewall", "show", "rule", "name=all"])
+            .creation_flags(CREATE_NO_WINDOW)
+            .output()
+            .map_err(|e| format!("Failed to get firewall rules: {}", e))?;
 
-            if let Ok(out) = output {
-                let stdout = String::from_utf8_lossy(&out.stdout);
-                for line in stdout.lines() {
-                    if line.contains(prefix) {
-                        if let Some(rule_name) = line.split("Rule Name:").nth(1) {
-                            let rule_name = rule_name.trim();
-                            let delete_output = Command::new("netsh")
-                                .args(&[
-                                    "advfirewall",
-                                    "firewall",
-                                    "delete",
-                                    "rule",
-                                    &format!("name={}", rule_name),
-                                ])
-                                .output();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let mut current_rule_name: Option<String> = None;
+        
+        // Парсим вывод netsh построчно
+        // Формат: Rule Name: <name>
+        for line in stdout.lines() {
+            let line = line.trim();
+            
+            // Ищем строку с именем правила (может быть "Rule Name:" или "Rule Name :")
+            if line.contains("Rule Name") {
+                // Извлекаем имя правила после "Rule Name:" или "Rule Name :"
+                let parts: Vec<&str> = line.split(':').collect();
+                if parts.len() >= 2 {
+                    let rule_name = parts[1].trim();
+                    if !rule_name.is_empty() {
+                        current_rule_name = Some(rule_name.to_string());
+                    }
+                }
+            }
+            
+            // Если у нас есть имя правила и оно содержит нужный префикс
+            if let Some(ref rule_name) = current_rule_name {
+                for prefix in &prefixes {
+                    if rule_name.starts_with(prefix) && !deleted_rules.contains(rule_name) {
+                        // Удаляем правило
+                        let delete_output = Command::new("netsh")
+                            .args(&[
+                                "advfirewall",
+                                "firewall",
+                                "delete",
+                                "rule",
+                                &format!("name={}", rule_name),
+                            ])
+                            .creation_flags(CREATE_NO_WINDOW)
+                            .output();
 
-                            if let Ok(del_out) = delete_output {
+                        match delete_output {
+                            Ok(del_out) => {
                                 if del_out.status.success() {
+                                    deleted_rules.insert(rule_name.clone());
                                     results.push(format!("Deleted rule: {}", rule_name));
+                                    println!("[TAURI] Successfully deleted firewall rule: {}", rule_name);
+                                } else {
+                                    let stderr = String::from_utf8_lossy(&del_out.stderr);
+                                    let stdout_msg = String::from_utf8_lossy(&del_out.stdout);
+                                    println!("[TAURI] Failed to delete rule {}: stderr={}, stdout={}", rule_name, stderr, stdout_msg);
+                                }
+                            }
+                            Err(e) => {
+                                println!("[TAURI] Error deleting rule {}: {}", rule_name, e);
+                            }
+                        }
+                        break; // Переходим к следующему правилу
+                    }
+                }
+            }
+            
+            // Сбрасываем имя правила при переходе к следующему блоку правил
+            // (пустая строка или разделитель)
+            if line.is_empty() || line.starts_with("---") || line.starts_with("=") {
+                current_rule_name = None;
+            }
+        }
+
+        // Также пробуем удалить правила напрямую по известным доменам из servers.json
+        // Это нужно на случай, если парсинг не сработал
+        let clusters_data: serde_json::Value = serde_json::from_str(
+            include_str!("../../src/data/servers.json")
+        ).unwrap_or(serde_json::json!({}));
+        
+        if let serde_json::Value::Array(regions) = &clusters_data["clusters"] {
+            for region_data in regions {
+                if let serde_json::Value::Array(clusters) = &region_data["clusters"] {
+                    for cluster in clusters {
+                        if let Some(domain) = cluster["domain"].as_str() {
+                            let rule_name = format!("WoT_Blitz_Block_{}", domain.replace(".", "_"));
+                            
+                            if !deleted_rules.contains(&rule_name) {
+                                let delete_output = Command::new("netsh")
+                                    .args(&[
+                                        "advfirewall",
+                                        "firewall",
+                                        "delete",
+                                        "rule",
+                                        &format!("name={}", rule_name),
+                                    ])
+                                    .creation_flags(CREATE_NO_WINDOW)
+                                    .output();
+
+                                if let Ok(del_out) = delete_output {
+                                    if del_out.status.success() {
+                                        deleted_rules.insert(rule_name.clone());
+                                        results.push(format!("Deleted rule: {}", rule_name));
+                                        println!("[TAURI] Successfully deleted firewall rule (direct): {}", rule_name);
+                                    }
+                                }
+                                
+                                // Также пробуем удалить правила для отдельных IP
+                                if let serde_json::Value::Array(ips_array) = &cluster["ips"] {
+                                    for ip_val in ips_array {
+                                        if let Some(ip) = ip_val.as_str() {
+                                            let ip_rule_name = format!("{}_{}", rule_name, ip.replace(".", "_"));
+                                            
+                                            if !deleted_rules.contains(&ip_rule_name) {
+                                                let _ = Command::new("netsh")
+                                                    .args(&[
+                                                        "advfirewall",
+                                                        "firewall",
+                                                        "delete",
+                                                        "rule",
+                                                        &format!("name={}", ip_rule_name),
+                                                    ])
+                                                    .creation_flags(CREATE_NO_WINDOW)
+                                                    .output();
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1340,9 +1472,12 @@ fn get_firewall_rules() -> Result<Vec<String>, String> {
     #[cfg(windows)]
     {
         use std::process::Command;
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
 
         let output = Command::new("netsh")
             .args(&["advfirewall", "firewall", "show", "rule", "name=all"])
+            .creation_flags(CREATE_NO_WINDOW)
             .output()
             .map_err(|e| format!("Failed to get firewall rules: {}", e))?;
 
@@ -1365,5 +1500,132 @@ fn get_firewall_rules() -> Result<Vec<String>, String> {
     #[cfg(not(windows))]
     {
         Ok(vec!["Firewall rules only supported on Windows".into()])
+    }
+}
+
+// Settings management - храним настройки в файле конфигурации
+fn get_settings_path() -> Result<std::path::PathBuf, String> {
+    #[cfg(windows)]
+    {
+        let appdata = std::env::var("APPDATA")
+            .map_err(|_| "APPDATA environment variable not found".to_string())?;
+        Ok(std::path::PathBuf::from(appdata)
+            .join("clusterbanned")
+            .join("settings.json"))
+    }
+    
+    #[cfg(target_os = "macos")]
+    {
+        let home = std::env::var("HOME")
+            .map_err(|_| "HOME environment variable not found".to_string())?;
+        Ok(std::path::PathBuf::from(home)
+            .join("Library")
+            .join("Application Support")
+            .join("clusterbanned")
+            .join("settings.json"))
+    }
+    
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        let home = std::env::var("HOME")
+            .map_err(|_| "HOME environment variable not found".to_string())?;
+        Ok(std::path::PathBuf::from(home)
+            .join(".config")
+            .join("clusterbanned")
+            .join("settings.json"))
+    }
+}
+
+#[tauri::command]
+fn get_settings() -> Result<serde_json::Value, String> {
+    let settings_path = get_settings_path()?;
+    
+    // Если файл не существует, возвращаем дефолтные настройки
+    if !settings_path.exists() {
+        return Ok(serde_json::json!({
+            "useFirewall": true,
+            "useBackup": false,
+            "backupCount": 5
+        }));
+    }
+    
+    // Читаем файл
+    let content = std::fs::read_to_string(&settings_path)
+        .map_err(|e| format!("Failed to read settings file: {}", e))?;
+    
+    // Парсим JSON
+    let settings: serde_json::Value = serde_json::from_str(&content)
+        .map_err(|e| format!("Failed to parse settings JSON: {}", e))?;
+    
+    // Убеждаемся, что все поля присутствуют (слияние с дефолтами)
+    let mut result = serde_json::json!({
+        "useFirewall": true,
+        "useBackup": false,
+        "backupCount": 5
+    });
+    
+    if let serde_json::Value::Object(map) = settings {
+        for (key, value) in map {
+            result[key] = value;
+        }
+    }
+    
+    Ok(result)
+}
+
+#[tauri::command]
+fn save_settings(settings: serde_json::Value) -> Result<(), String> {
+    let settings_path = get_settings_path()?;
+    
+    // Создаем директорию, если её нет
+    if let Some(parent) = settings_path.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|e| format!("Failed to create settings directory: {}", e))?;
+    }
+    
+    // Записываем настройки в файл
+    let json_string = serde_json::to_string_pretty(&settings)
+        .map_err(|e| format!("Failed to serialize settings: {}", e))?;
+    
+    std::fs::write(&settings_path, json_string)
+        .map_err(|e| format!("Failed to write settings file: {}", e))?;
+    
+    Ok(())
+}
+
+// Вспомогательная функция для чтения настроек из Rust-кода
+fn read_settings_from_file() -> (bool, bool, u32) {
+    match get_settings_path() {
+        Ok(settings_path) => {
+            if !settings_path.exists() {
+                return (true, false, 5); // Дефолтные значения
+            }
+            
+            match std::fs::read_to_string(&settings_path) {
+                Ok(content) => {
+                    match serde_json::from_str::<serde_json::Value>(&content) {
+                        Ok(settings) => {
+                            let use_firewall = settings.get("useFirewall")
+                                .and_then(|v| v.as_bool())
+                                .unwrap_or(true);
+                            
+                            let use_backup = settings.get("useBackup")
+                                .and_then(|v| v.as_bool())
+                                .unwrap_or(false);
+                            
+                            let backup_count = settings.get("backupCount")
+                                .and_then(|v| v.as_u64())
+                                .map(|v| v as u32)
+                                .unwrap_or(5);
+                            
+                            (use_firewall, use_backup, backup_count)
+                        }
+                        Err(_) => (true, false, 5), // Дефолты при ошибке парсинга
+                    }
+                }
+                Err(_) => (true, false, 5), // Дефолты при ошибке чтения
+            }
+        }
+        Err(_) => (true, false, 5), // Дефолты при ошибке получения пути
     }
 }

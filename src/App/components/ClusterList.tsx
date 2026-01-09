@@ -1,12 +1,7 @@
 import { Checkbox } from "@headlessui/react";
 import { motion, AnimatePresence } from "framer-motion";
-
-type Cluster = {
-  id: string;
-  domain: string;
-  location?: string;
-  latency?: string;
-};
+import type { Cluster } from "../../types/cluster";
+import type { PingMap } from "../../types/ping";
 
 export default function ClusterList({
   clusters,
@@ -17,17 +12,7 @@ export default function ClusterList({
   clusters: Cluster[];
   checkedMap?: Record<string, boolean>;
   onToggle?: (domain: string, checked: boolean) => void;
-  pings?: Record<
-    string,
-    {
-      last: number | null;
-      avg: number | null;
-      attempts: number;
-      successes: number;
-      lossPercent: number;
-      status: string;
-    }
-  >;
+  pings?: PingMap;
 }) {
   return (
     <div className="ban-clusters-2-container">
