@@ -22,7 +22,7 @@ export default function ClearConfirmModal({
       {open && (
         <motion.div
           key="clear-confirm-modal"
-          className="fixed inset-0 z-50 flex items-center justify-center"
+          className="modal fixed inset-0 z-50 flex items-center justify-center"
         >
           <motion.div
             className="absolute inset-0 bg-black/50"

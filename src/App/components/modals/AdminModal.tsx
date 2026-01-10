@@ -14,7 +14,7 @@ export default function AdminModal({
       {open && (
         <motion.div
           key="admin-modal"
-          className="fixed inset-0 z-1000 flex items-center justify-center"
+          className="modal fixed inset-0 z-1000 flex items-center justify-center"
         >
           <motion.div
             className="absolute inset-0 bg-black/60"
@@ -35,8 +35,9 @@ export default function AdminModal({
             </h3>
             <p className="text-sm text-white/60 mb-4">
               Приложение не обладает правами для изменения системного файла
-              hosts. Чтобы использовать функциональность блокировки/разблокировки
-              серверов, запустите приложение с правами администратора.
+              hosts. Чтобы использовать функциональность
+              блокировки/разблокировки серверов, запустите приложение с правами
+              администратора.
             </p>
 
             <div className="flex justify-end gap-2">

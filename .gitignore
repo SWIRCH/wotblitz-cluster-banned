@@ -23,4 +23,9 @@ dist-ssr
 *.sln
 *.sw?
 
+.tauri
 base.txt
+*.key
+*.crt
+*.key.pub
+# build.ps1

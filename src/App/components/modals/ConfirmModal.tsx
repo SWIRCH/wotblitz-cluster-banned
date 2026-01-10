@@ -27,7 +27,7 @@ export default function ConfirmModal({
       {open && (
         <motion.div
           key="confirm-modal"
-          className="fixed inset-0 z-50 flex items-center justify-center"
+          className="modal fixed inset-0 z-50 flex items-center justify-center"
         >
           <motion.div
             className="absolute inset-0 bg-black/50"
@@ -54,10 +54,10 @@ export default function ConfirmModal({
             {isBlockingAll && (
               <div className="mb-3 p-3 rounded bg-red-900/20 border border-red-700 text-sm text-red-200">
                 <strong>Внимание:</strong> Вы собираетесь заблокировать{" "}
-                <strong>все</strong> серверы региона <strong>{regionName}</strong>
-                . Это приведёт к тому, что игра не сможет подключаться к
-                серверам этого региона — вы фактически отключите доступ к игре в
-                этом регионе.
+                <strong>все</strong> серверы региона{" "}
+                <strong>{regionName}</strong>. Это приведёт к тому, что игра не
+                сможет подключаться к серверам этого региона — вы фактически
+                отключите доступ к игре в этом регионе.
               </div>
             )}
             <div className="max-h-48 overflow-auto mb-4 bg-white/5 p-3 rounded">

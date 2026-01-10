@@ -33,7 +33,7 @@ fn main() {
 }
 
 // Helpers for hosts management
-use sysinfo::{PidExt, ProcessExt, System, SystemExt};
+use sysinfo::{PidExt, ProcessExt, SystemExt};
 
 const START_MARKER: &str = "# clusterbanned start";
 const END_MARKER: &str = "# clusterbanned end";
@@ -415,13 +415,13 @@ fn check_elevation() -> Result<serde_json::Value, String> {
 #[tauri::command]
 fn update_hosts_block(
     blocked_domains: Option<Vec<String>>,
-    blockedDomains: Option<Vec<String>>,
+    blocked_domains_alt: Option<Vec<String>>,
     remove: Option<bool>,
     region: Option<String>,
     args: Option<serde_json::Value>,
 ) -> Result<String, String> {
     // Prefer directly provided named params (matches Tauri's expected mapping)
-    let mut blocked: Option<Vec<String>> = blocked_domains.or(blockedDomains);
+    let mut blocked: Option<Vec<String>> = blocked_domains.or(blocked_domains_alt);
     // Читаем настройки из файла, если не переданы явно
     let backup_saved = {
         let (_use_firewall, use_backup, _backup_count) = read_settings_from_file();
@@ -437,7 +437,7 @@ fn update_hosts_block(
             }
             if let Some(arr) = payload
                 .get("blocked_domains")
-                .or_else(|| payload.get("blockedDomains"))
+                .or_else(|| payload.get("blocked_domains_alt"))
             {
                 if let Some(a) = arr.as_array() {
                     blocked = Some(

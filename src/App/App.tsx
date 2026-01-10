@@ -61,12 +61,8 @@ export default function App() {
 
   // Hooks
   const { settings, updateSetting, loading: settingsLoading } = useSettings();
-  const {
-    selections,
-    updateSelection,
-    selectCluster,
-    clearAllSelections,
-  } = useSelections(game);
+  const { selections, updateSelection, selectCluster, clearAllSelections } =
+    useSelections(game);
   const {
     hostsMismatch,
     mismatchDomains,
@@ -102,18 +98,18 @@ export default function App() {
     }
   }, []);
 
-  // Отслеживаем загрузку всех данных
   useEffect(() => {
-    // Ждем загрузки настроек и инициализации selections
-    // Проверяем, что настройки загружены и selections инициализированы
     if (!settingsLoading && Object.keys(selections).length > 0) {
-      // Небольшая задержка для плавности и чтобы дать время на рендеринг
-      const timer = setTimeout(() => {
-        setIsLoading(false);
-      }, 400);
-      return () => clearTimeout(timer);
+      console.log(
+        "Данные приложения загружены, ожидаем завершения проверки обновлений"
+      );
     }
   }, [settingsLoading, selections]);
+
+  const handleLoadingComplete = () => {
+    console.log("LoadingScreen разрешил закрытие");
+    setIsLoading(false);
+  };
 
   // Check elevation on mount
   useEffect(() => {
@@ -187,9 +183,7 @@ export default function App() {
       if (gameRunning) {
         await killGame();
         setInfoTitle("Закрытие игры");
-        setInfoMessage(
-          "Попытка закрыть процесс игры (если он был запущен)"
-        );
+        setInfoMessage("Попытка закрыть процесс игры (если он был запущен)");
         setInfoIsError(false);
         setInfoOpen(true);
       } else {
@@ -240,119 +234,129 @@ export default function App() {
   return (
     <>
       <AnimatePresence mode="wait">
-        {isLoading && <LoadingScreen key="loading" visible={isLoading} />}
+        {isLoading && (
+          <LoadingScreen
+            key="loading"
+            visible={isLoading}
+            onLoadingComplete={handleLoadingComplete}
+          />
+        )}
       </AnimatePresence>
       <AnimatePresence>
         {!isLoading && (
           <main className="" id="layer-ingame" key="main">
             <Navbar
-        game={game}
-        selectedRegion={selectedRegion}
-        onRegionChange={handleRegionChange}
-      />
-      <div className="inGameContainer">
-        <GamePoster
-          posterUrl={posterUrl}
-          tauriAvailable={tauriAvailable}
-          hostsMismatch={hostsMismatch}
-          gameRunning={gameRunning}
-          onPlayClick={handlePlayClick}
-          onUpdateClick={handleUpdateClick}
-          onCheckHosts={checkHostsConsistency}
-          onSettingsClick={() => setSettingsModalOpen(true)}
-          onRefreshClick={async () => {
-            await pingClusters(selectedRegionId);
-            await checkGameRunning();
-          }}
-          onClearClick={() => setClearConfirmOpen(true)}
-          selectedRegion={selectedRegion}
-          lastTauriError={lastTauriError}
-          mismatchDomains={mismatchDomains}
-        />
-        <div className="inGameOption">
-          <div className="whilecard">
-            <div className="flex justify-between items-center space-y-1 rounded-xl bg-white/5 p-1 sm:p-2">
-              <h3>Выбрать сервер</h3>
-            </div>
-            <div className="content">
-              <div className="ban-clusters-1 mt-1">
-                <ClusterMenu
+              game={game}
+              selectedRegion={selectedRegion}
+              onRegionChange={handleRegionChange}
+            />
+            <div className="inGameContainer">
+              <GamePoster
+                posterUrl={posterUrl}
+                tauriAvailable={tauriAvailable}
+                hostsMismatch={hostsMismatch}
+                gameRunning={gameRunning}
+                onPlayClick={handlePlayClick}
+                onUpdateClick={handleUpdateClick}
+                onCheckHosts={checkHostsConsistency}
+                onSettingsClick={() => setSettingsModalOpen(true)}
+                onRefreshClick={async () => {
+                  await pingClusters(selectedRegionId);
+                  await checkGameRunning();
+                }}
+                onClearClick={() => setClearConfirmOpen(true)}
+                selectedRegion={selectedRegion}
+                lastTauriError={lastTauriError}
+                mismatchDomains={mismatchDomains}
+              />
+              <div className="inGameOption">
+                <div className="whilecard">
+                  <div className="flex justify-between items-center space-y-1 rounded-xl bg-white/5 p-1 sm:p-2">
+                    <h3>Выбрать сервер</h3>
+                  </div>
+                  <div className="content">
+                    <div className="ban-clusters-1 mt-1">
+                      <ClusterMenu
+                        clusters={clusters}
+                        selectedDomain={selectedDomain}
+                        onSelect={handleSelectCluster}
+                        pings={pings}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <SelectiveBlocking
                   clusters={clusters}
-                  selectedDomain={selectedDomain}
-                  onSelect={handleSelectCluster}
+                  checkedMap={regionMap}
+                  onToggle={handleToggleCluster}
                   pings={pings}
                 />
               </div>
             </div>
-          </div>
-          <SelectiveBlocking
-            clusters={clusters}
-            checkedMap={regionMap}
-            onToggle={handleToggleCluster}
-            pings={pings}
-          />
-        </div>
-      </div>
 
-      {/* Modals */}
-      <ConfirmModal
-        open={confirmOpen}
-        onClose={() => setConfirmOpen(false)}
-        onConfirm={() => handleApplyHosts(confirmDomains)}
-        domains={confirmDomains}
-        clusters={clusters}
-        regionName={selectedRegion?.alias_name ?? selectedRegion?.name ?? ""}
-        onBlockingAllConfirm={() => setBlockingAllConfirmOpen(true)}
-      />
+            {/* Modals */}
+            <ConfirmModal
+              open={confirmOpen}
+              onClose={() => setConfirmOpen(false)}
+              onConfirm={() => handleApplyHosts(confirmDomains)}
+              domains={confirmDomains}
+              clusters={clusters}
+              regionName={
+                selectedRegion?.alias_name ?? selectedRegion?.name ?? ""
+              }
+              onBlockingAllConfirm={() => setBlockingAllConfirmOpen(true)}
+            />
 
-      <BlockingAllConfirmModal
-        open={blockingAllConfirmOpen}
-        onClose={() => setBlockingAllConfirmOpen(false)}
-        onConfirm={async () => {
-          setBlockingAllConfirmOpen(false);
-          await handleApplyHosts(confirmDomains);
-        }}
-        regionName={selectedRegion?.alias_name ?? selectedRegion?.name ?? ""}
-      />
+            <BlockingAllConfirmModal
+              open={blockingAllConfirmOpen}
+              onClose={() => setBlockingAllConfirmOpen(false)}
+              onConfirm={async () => {
+                setBlockingAllConfirmOpen(false);
+                await handleApplyHosts(confirmDomains);
+              }}
+              regionName={
+                selectedRegion?.alias_name ?? selectedRegion?.name ?? ""
+              }
+            />
 
-      <ClearConfirmModal
-        open={clearConfirmOpen}
-        onClose={() => setClearConfirmOpen(false)}
-        onConfirm={handleClearCluster}
-        useFirewall={settings.useFirewall}
-        useBackup={settings.useBackup}
-        loading={loading}
-      />
+            <ClearConfirmModal
+              open={clearConfirmOpen}
+              onClose={() => setClearConfirmOpen(false)}
+              onConfirm={handleClearCluster}
+              useFirewall={settings.useFirewall}
+              useBackup={settings.useBackup}
+              loading={loading}
+            />
 
-      <InfoModal
-        open={infoOpen}
-        onClose={() => setInfoOpen(false)}
-        title={infoTitle}
-        message={infoMessage}
-        isError={infoIsError}
-      />
+            <InfoModal
+              open={infoOpen}
+              onClose={() => setInfoOpen(false)}
+              title={infoTitle}
+              message={infoMessage}
+              isError={infoIsError}
+            />
 
-      <SettingsModal
-        open={settingsModalOpen}
-        onClose={() => setSettingsModalOpen(false)}
-        settings={settings}
-        onUpdateSetting={updateSetting}
-        onDiagnose={handleDiagnose}
-        diagnosticInfo={diagnosticInfo}
-      />
+            <SettingsModal
+              open={settingsModalOpen}
+              onClose={() => setSettingsModalOpen(false)}
+              settings={settings}
+              onUpdateSetting={updateSetting}
+              onDiagnose={handleDiagnose}
+              diagnosticInfo={diagnosticInfo}
+            />
 
-      <AdminModal
-        open={adminModalOpen}
-        onShowInstructions={() => {
-          setAdminModalOpen(false);
-          setInfoTitle("Как запустить с правами администратора");
-          setInfoMessage(
-            "Запустите приложение от имени администратора (ПКМ → Запуск от имени администратора) или создайте ярлык, в котором в свойствах выберите запуск от имени администратора. После этого нажмите 'Повторить'."
-          );
-          setInfoIsError(false);
-          setInfoOpen(true);
-        }}
-      />
+            <AdminModal
+              open={adminModalOpen}
+              onShowInstructions={() => {
+                setAdminModalOpen(false);
+                setInfoTitle("Как запустить с правами администратора");
+                setInfoMessage(
+                  "Запустите приложение от имени администратора (ПКМ → Запуск от имени администратора) или создайте ярлык, в котором в свойствах выберите запуск от имени администратора. После этого нажмите 'Повторить'."
+                );
+                setInfoIsError(false);
+                setInfoOpen(true);
+              }}
+            />
           </main>
         )}
       </AnimatePresence>

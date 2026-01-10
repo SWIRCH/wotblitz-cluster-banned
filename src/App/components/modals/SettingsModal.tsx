@@ -26,7 +26,7 @@ export default function SettingsModal({
       {open && (
         <motion.div
           key="settings-modal"
-          className="fixed inset-0 z-1000 flex items-center justify-center"
+          className="modal fixed inset-0 z-1000 flex items-center justify-center"
         >
           <motion.div
             className="absolute inset-0 bg-black/60"
@@ -42,18 +42,14 @@ export default function SettingsModal({
             exit={{ opacity: 0, y: 8, scale: 0.995 }}
             transition={{ duration: 0.18 }}
           >
-            <h3 className="text-lg font-semibold mb-2">
-              Настройки приложения
-            </h3>
+            <h3 className="text-lg font-semibold mb-2">Настройки приложения</h3>
 
             <p className="text-sm text-white/60 mb-4">
               Здесь вы можете настроить параметры приложения.
             </p>
 
             <div className="mt-3 p-3 rounded bg-white/5">
-              <div className="text-sm font-medium mb-2">
-                Методы блокировки:
-              </div>
+              <div className="text-sm font-medium mb-2">Методы блокировки:</div>
 
               <label className="flex items-center gap-2 text-sm">
                 <input
@@ -65,15 +61,13 @@ export default function SettingsModal({
                   className="rounded"
                 />
                 <span>Использовать брандмауэр Windows</span>
-                <span className="text-green-400 text-xs">
-                  (рекомендуется)
-                </span>
+                <span className="text-green-400 text-xs">(рекомендуется)</span>
               </label>
 
-              <div className="text-xs text-white/60 mt-1 pl-6">
+              <p className="text-xs text-white/60 mt-1 pl-6">
                 Блокирует подключения на уровне сети. Работает даже если игра
                 использует IP напрямую. Требует прав администратора.
-              </div>
+              </p>
             </div>
 
             <div className="mt-3 p-3 rounded bg-white/5">
@@ -97,9 +91,9 @@ export default function SettingsModal({
                   </span>
                 </label>
 
-                <div className="text-xs text-white/60 mt-1 pl-6">
+                <p className="text-xs text-white/60 mt-1 pl-6">
                   После очистки создаёт файл .bak в папке с hosts.
-                </div>
+                </p>
               </div>
 
               <div className="">
@@ -186,9 +180,9 @@ export default function SettingsModal({
                 Диагностика
               </button>
 
-              <div className="text-xs text-white/60 mt-1 pl-6">
+              <p className="text-xs text-white/60 mt-1 pl-6">
                 {diagnosticInfo ?? "Нет данных."}
-              </div>
+              </p>
             </div>
 
             <div className="flex justify-end gap-2 mt-2">

@@ -63,18 +63,18 @@ export default function ClusterMenu({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
                 transition={{ duration: 0.12 }}
+                style={
+                  pings &&
+                  pings[c.domain] &&
+                  (pings[c.domain].status !== "ok" ||
+                    pings[c.domain].lossPercent === 100)
+                    ? { background: "#ff00001c" }
+                    : undefined
+                }
               >
                 <div
                   className="dropdownInteractiveItem flex items-center gap-2"
                   onClick={() => onSelect && onSelect(c.domain)}
-                  style={
-                    pings &&
-                    pings[c.domain] &&
-                    (pings[c.domain].status !== "ok" ||
-                      pings[c.domain].lossPercent === 100)
-                      ? { background: "#ff00001c" }
-                      : undefined
-                  }
                 >
                   <img width={22} height={22} src="Games/444200/mini.png" />
                   <div className="flex items-center">

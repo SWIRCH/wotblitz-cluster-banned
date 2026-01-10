@@ -36,7 +36,7 @@ export default function SelectiveBlocking({
         {clusters.length > 0 && (
           <div className="text-xs text-white/60">
             <span>
-              Ping: {avg ? `${avg} ms` : "—"} ({ok}/{total} ok)
+              Avg Ping: {avg ? `${avg} ms` : "—"} ({ok}/{total} ok)
             </span>
           </div>
         )}

@@ -36,11 +36,7 @@ export default function Navbar({
                 <h3>
                   {selectedRegion?.alias_name ?? selectedRegion?.name ?? ""}{" "}
                 </h3>
-                <ChevronDown
-                  size={20}
-                  strokeWidth={1.5}
-                  absoluteStrokeWidth
-                />
+                <ChevronDown size={20} strokeWidth={1.5} absoluteStrokeWidth />
               </MenuButton>
               <MenuItems
                 anchor="bottom"
@@ -60,9 +56,7 @@ export default function Navbar({
                         height={22}
                         src={region.icon}
                         className={
-                          region.id === selectedRegion?.id
-                            ? "rounded-full"
-                            : ""
+                          region.id === selectedRegion?.id ? "rounded-full" : ""
                         }
                       />
                       <span>{region.name}</span>
@@ -75,11 +69,26 @@ export default function Navbar({
         </div>
       </div>
       <div>
-        <small>
-          <span className="cursor-pointer" onClick={() => openAuthorLink()}>
+        {/* <small>
+          <span className="cursor-pointer" >
             {config.AUTHOR}@{config.NAME} {config.VERSION}
           </span>
-        </small>
+        </small> */}
+        <a
+          onClick={() => openAuthorLink()}
+          target="_blank"
+          className="cursor-pointer github-btn text-sm"
+        >
+          <img
+            src="/github-mark-white.svg"
+            alt="github"
+            style={{
+              width: 20,
+              height: 20,
+            }}
+          />
+          GitHub v{config.VERSION}
+        </a>
       </div>
     </div>
   );

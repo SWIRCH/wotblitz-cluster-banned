@@ -20,7 +20,7 @@ export default function InfoModal({
       {open && (
         <motion.div
           key="info-modal"
-          className="fixed inset-0 z-60 flex items-center justify-center"
+          className="modal fixed inset-0 z-60 flex items-center justify-center"
         >
           <motion.div
             className="absolute inset-0 bg-black/50"
