@@ -15,16 +15,17 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = [] }
 tauri-plugin-fs = "2"
-
-# Async utilities
+tauri-plugin-opener = "2"
 tokio = { version = "1", features = ["full", "rt-multi-thread", "time"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 regex = "1"
-winping = "0.10.0"
 sysinfo = "0.29"
 reqwest = { version = "0.11", features = ["json"] }
-tauri-plugin-opener = "2"
+tauri-plugin-updater = "2.9.0"
+
+[target.'cfg(windows)'.dependencies]
+winping = "0.10.0"
 
 [features]
 default = ["custom-protocol"]

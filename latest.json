@@ -1,15 +1,15 @@
-﻿{
+{
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSRE5DUW96dGtFeGdOL2V3L1BJRlFPOGRoNk04WnNGSG1uN0RkazdQVHNsMjBaZ1N3S29LUm9NMjM0VVJTTmRwVEludlYyOEFqanZPZ0liUzlWQ1FiK3VLK0xSUVc1Z0FrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzY4MDc0NTE3CWZpbGU6Y2x1c3RlcmJhbm5lZF8wLjEuMl94NjQtc2V0dXAuZXhlClFPaVE1cW8rSndVaVllTVhSWUg4U1VEU1phTXQ5VmhkYkxGS1hMUnNUa0pnSUpPUnNqc1cyZFpFb1RUOUxQUU9iWWY2enFNeUhHQ1d1R2cwK2dYM0RBPT0K",
-      "url": "https://github.com/SWIRCH/wotblitz-cluster-banned/releases/download/v0.1.2/clusterbanned_0.1.2_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSRE5DUW96dGtFeHBITVU1ZlpBUW9XTWxmdVdxZXpGRHlGR1hYZTNyZHppMUovZ09TcWNPQkV6UG1HZ2JpZzdIaHF1Z2JWc3l3TXNKQmVmQkNyWnRROWRRSXFXNGpXSkFFPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzY4MDgwNTA0CWZpbGU6Y2x1c3RlcmJhbm5lZF8wLjEuM194NjQtc2V0dXAuZXhlCjIxZ3o1TjhvSTlFU2pqWllLekJTTGRaK0RkNVRIeWhvTjJPL3RXRTA2ZVYvaHovaDRuUGRZODJLRjhqSzdiMTVrdldsekkrMkpBVnZkNjlaN1cwdUFBPT0K",
+      "url": "https://github.com/SWIRCH/wotblitz-cluster-banned/releases/download/v0.1.3/clusterbanned_0.1.3_x64-setup.exe"
     },
     "windows-x86_64-msi": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSRE5DUW96dGtFeHV3dVlLMnpjSjJ1UnZrOHhrVGVGTHl3NHY4YXJPYlFkZ3BHV3pVUmo3LzVJcEJNSGFZc3ViekJ1aXRkSWxCWkhkKzFYbi9xY2djdjhoRUZaZFdaeUFvPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzY4MDc0NTE3CWZpbGU6Y2x1c3RlcmJhbm5lZF8wLjEuMl94NjRfZW4tVVMubXNpCkl0c1NJMWM3SjF3QnptdUV6LzNhYmlIckM0OHptcnBZNTBvczdKNWRBclFmc2NSVEt5U3pFL3J4eFBvWmlBbGQxU3Y0dGlSWC85dk84L3J5TlpnRUN3PT0K",
-      "url": "https://github.com/SWIRCH/wotblitz-cluster-banned/releases/download/v0.1.2/clusterbanned_0.1.2_x64_en-US.msi"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSRE5DUW96dGtFeHRSRVhjK3ZXSWtEOHhQZElJWUpIb3NvZTZRTzhlYkJ3V3JSQ0JXeEtRTjA4Y3JxNVQ1LzV6aEZGOXBqVVR6Yi8vY1ErTDRocXEwUXJDbVh0RkZ2NFFjPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzY4MDgwNTA0CWZpbGU6Y2x1c3RlcmJhbm5lZF8wLjEuM194NjRfZW4tVVMubXNpCkJQVk1nNXM1b01IZHpBbHNFbXc3cnJQVlRvWnp3WUhPdnBIMlUvWENwdFFvb2dhRkYyamJzS1U2dmJuUk5ud0FNL1RuVGdyeEZ1alNzNk5uYVBzVUN3PT0K",
+      "url": "https://github.com/SWIRCH/wotblitz-cluster-banned/releases/download/v0.1.3/clusterbanned_0.1.3_x64_en-US.msi"
     }
   },
-  "pub_date": "2026-01-10T22:48:37Z",
-  "version": "v0.1.2",
-  "notes": "Auto-generated update for version 0.1.2"
+  "pub_date": "2026-01-11T00:28:24Z",
+  "version": "v0.1.3",
+  "notes": "Auto-generated update for version 0.1.3"
 }

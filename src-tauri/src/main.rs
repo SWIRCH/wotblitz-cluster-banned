@@ -1,12 +1,11 @@
-// src-tauri/src/main.rs
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
-        // Подключаем плагины (only fs)
         .plugin(tauri_plugin_fs::init())
-        // Регистрируем команды
         .invoke_handler(tauri::generate_handler![
             ping_server,
             check_hosts_consistency,
@@ -27,7 +26,6 @@ fn main() {
             get_settings,
             save_settings,
         ])
-        // Запускаем приложение
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
